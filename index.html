@@ -25,10 +25,10 @@
         height: 100%;
         margin: 0;
         padding: 0;
-        background: #e9ecef;
+        background: #f1f3f6;
       }
 
-      /* === DASHBOARD STYLE === */
+      /* Dashboard style */
       #dashboard {
         position: absolute;
         top: 15px;
@@ -87,10 +87,6 @@
 
       #dashboard button:hover { background: #005fa3; }
 
-      .leaflet-control-zoom { border-radius: 8px; overflow: hidden; }
-      .leaflet-bar a { background: rgba(255,255,255,0.9); color: #333; }
-      .leaflet-bar a:hover { background: #0078d7; color: white; }
-
       #legend {
         position: absolute;
         bottom: 15px;
@@ -108,7 +104,7 @@
   <body>
     <div id="map"></div>
 
-    <!-- === DASHBOARD PANEL === -->
+    <!-- Dashboard -->
     <div id="dashboard">
       <h2>📊 Dashboard SIG Samarinda</h2>
       <div class="info">
@@ -131,25 +127,24 @@
       <button id="resetZoom">Reset Tampilan</button>
     </div>
 
-    <!-- === LEGEND === -->
+    <!-- Legenda -->
     <div id="legend">
       <b>🗺️ Keterangan:</b><br>
-      <img src='https://cdn-icons-png.flaticon.com/512/535/535239.png' width='16'> TPS (Biru)<br>
-      <img src='https://cdn-icons-png.flaticon.com/512/565/565547.png' width='16'> TPA (Merah)<br>
+      <img src='https://cdn-icons-png.flaticon.com/512/1041/1041916.png' width='16'> TPS (Tong Sampah Biru)<br>
+      <img src='https://cdn-icons-png.flaticon.com/512/1041/1041897.png' width='16'> TPA (Truk Sampah Merah)<br>
       <span style='display:inline-block;width:12px;height:12px;background:#b5e48c;margin-right:5px;border:1px solid #333;'></span> Wilayah Kecamatan
     </div>
 
     <script>
-      // === INISIALISASI PETA ===
+      // === PETA ===
       var map = L.map('map', {
         zoomControl: false,
-        center: [-0.47, 117.15], // Fokus ke Samarinda
+        center: [-0.47, 117.15],
         zoom: 12,
         minZoom: 10,
         maxZoom: 18
       });
 
-      // === BASEMAP ===
       var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
@@ -167,32 +162,25 @@
       L.control.layers({ 'OpenStreetMap': osm, 'Esri World Imagery': esri, 'Carto Light': carto }).addTo(map);
       L.control.zoom({ position: 'topleft' }).addTo(map);
       new L.Control.Measure({ position: 'topleft' }).addTo(map);
-      L.control.scale({ position: 'bottomleft', metric: true }).addTo(map);
-
-      // === MINIMAP ===
-      var miniMapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        minZoom: 0, maxZoom: 13
-      });
-      var miniMap = new L.Control.MiniMap(miniMapLayer, { toggleDisplay: true, minimized: false, width: 180, height: 120 }).addTo(map);
 
       // === LAYER KECAMATAN ===
       var layer_clip_kotasamarinda_1 = L.geoJson(json_clip_kotasamarinda_1, {
         style: { color: '#333', weight: 1, fillColor: '#b5e48c', fillOpacity: 0.4 }
       }).addTo(map);
 
-      // === IKON ===
-      var tpaIcon = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/565/565547.png',
+      // === IKON TPS & TPA ===
+      var tpsIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/1041/1041916.png', // tong sampah biru
         iconSize: [28, 28],
         iconAnchor: [14, 28],
         popupAnchor: [0, -25]
       });
 
-      var tpsIcon = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/535/535239.png',
-        iconSize: [26, 26],
-        iconAnchor: [13, 26],
-        popupAnchor: [0, -20]
+      var tpaIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/1041/1041897.png', // truk sampah merah
+        iconSize: [30, 30],
+        iconAnchor: [15, 30],
+        popupAnchor: [0, -25]
       });
 
       // === LAYER TPS ===
@@ -226,45 +214,11 @@
       let tpsPerKec = countPerKecamatan(layer_TPSBUFFER_9);
       let tpaPerKec = countPerKecamatan(layer_TPABUFFER_8);
 
-      // Isi dropdown
       Object.keys(tpsPerKec).forEach(kec => {
         let opt = document.createElement("option");
         opt.value = kec; opt.textContent = kec;
         document.getElementById("filterKecamatan").appendChild(opt);
       });
-
-      // === FILTER KECAMATAN ===
-      document.getElementById("filterKecamatan").addEventListener("change", function(){
-        let val = this.value;
-        if(val === "semua"){
-          map.setView([-0.47, 117.15], 12);
-          layer_TPSBUFFER_9.eachLayer(l => l.addTo(map));
-          layer_TPABUFFER_8.eachLayer(l => l.addTo(map));
-        } else {
-          let bounds = [];
-          layer_TPSBUFFER_9.eachLayer(l => {
-            if(l.feature.properties.kecamatan === val) { l.addTo(map); bounds.push(l.getLatLng()); }
-            else map.removeLayer(l);
-          });
-          layer_TPABUFFER_8.eachLayer(l => {
-            if(l.feature.properties.kecamatan === val) { l.addTo(map); bounds.push(l.getLatLng()); }
-            else map.removeLayer(l);
-          });
-          if(bounds.length>0) map.fitBounds(L.latLngBounds(bounds));
-        }
-      });
-
-      // === HOVER KECAMATAN ===
-      function highlightFeature(e){
-        var layer=e.target;
-        layer.setStyle({ weight:2, color:'#000', fillColor:'#f4a261', fillOpacity:0.6 });
-        document.getElementById("infoKecamatan").innerText="Kecamatan: "+(layer.feature.properties.NAMOBJ||"Tidak diketahui");
-      }
-      function resetHighlight(e){
-        layer_clip_kotasamarinda_1.resetStyle(e.target);
-        document.getElementById("infoKecamatan").innerText="";
-      }
-      layer_clip_kotasamarinda_1.eachLayer(l=>l.on({mouseover:highlightFeature,mouseout:resetHighlight}));
 
       // === GRAFIK ===
       const ctx1 = document.getElementById('chartTPS').getContext('2d');
