@@ -1,107 +1,180 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
-        <meta name="mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <link rel="stylesheet" href="css/leaflet.css">
-        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
-        <link rel="stylesheet" href="css/qgis2web.css">
-        <link rel="stylesheet" href="css/fontawesome-all.min.css">
-        <link rel="stylesheet" href="css/leaflet.photon.css">
-        <link rel="stylesheet" href="css/leaflet-measure.css">
-        <style>
-        html, body, #map {
-            width: 100%;
-            height: 100%;
-            padding: 0;
-            margin: 0;
-        }
-        </style>
-        <title></title>
-    </head>
-    <body>
-        <div id="map">
-        </div>
-        <script src="js/qgis2web_expressions.js"></script>
-        <script src="js/leaflet.js"></script>
-        <script src="js/L.Control.Layers.Tree.min.js"></script>
-        <script src="js/leaflet.rotatedMarker.js"></script>
-        <script src="js/leaflet.pattern.js"></script>
-        <script src="js/leaflet-hash.js"></script>
-        <script src="js/Autolinker.min.js"></script>
-        <script src="js/rbush.min.js"></script>
-        <script src="js/labelgun.min.js"></script>
-        <script src="js/labels.js"></script>
-        <script src="js/leaflet.photon.js"></script>
-        <script src="js/leaflet-measure.js"></script>
-        <script src="data/clip_kotasamarinda_1.js"></script>
-        <script src="data/JALAN_LN_50K_2.js"></script>
-        <script src="data/PEMUKIMAN_AR_50K_3.js"></script>
-        <script src="data/buffer1_4.js"></script>
-        <script src="data/buffer2_5.js"></script>
-        <script src="data/Dissolved_6.js"></script>
-        <script src="data/cliptpa_7.js"></script>
-        <script src="data/TPABUFFER_8.js"></script>
-        <script src="data/TPSBUFFER_9.js"></script>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+    <link rel="stylesheet" href="css/qgis2web.css">
+    <link rel="stylesheet" href="css/fontawesome-all.min.css">
+    <link rel="stylesheet" href="css/leaflet.photon.css">
+    <link rel="stylesheet" href="css/leaflet-measure.css">
+    <title>Peta SIG - Kota Samarinda</title>
 
-		<!-- Dashboard Panel -->
-<div id="dashboard">
-  <h2>📊 Dashboard Informasi</h2>
-  <p><b>Total Kecamatan:</b> <span id="totalKec"></span></p>
-  <p><b>TPS Terdata:</b> <span id="tpsCount"></span></p>
-  <p><b>TPA Terdata:</b> <span id="tpaCount"></span></p>
-  <button id="resetZoom">Reset Tampilan</button>
-</div>
+    <style>
+      html, body, #map {
+        width: 100%;
+        height: 100%;
+        padding: 0;
+        margin: 0;
+      }
 
-<style>
-  #dashboard {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(255,255,255,0.9);
-    border-radius: 12px;
-    padding: 15px 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    font-family: 'Poppins', sans-serif;
-    width: 220px;
-    z-index: 1000;
-  }
-  #dashboard h2 {
-    font-size: 15px;
-    color: #333;
-    margin-bottom: 10px;
-  }
-  #dashboard p {
-    font-size: 13px;
-    margin: 5px 0;
-  }
-  #dashboard button {
-    margin-top: 10px;
-    width: 100%;
-    padding: 6px;
-    background: #0078d7;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  #dashboard button:hover {
-    background: #005fa3;
-  }
-<script>
-  // Dashboard interaktif
-  document.getElementById("totalKec").innerText = layer_clip_kotasamarinda_1.getLayers().length;
-  document.getElementById("tpsCount").innerText = layer_TPSBUFFER_9.getLayers().length;
-  document.getElementById("tpaCount").innerText = layer_TPABUFFER_8.getLayers().length;
+      /* DASHBOARD STYLE */
+      #dashboard {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255,255,255,0.92);
+        border-radius: 12px;
+        padding: 15px 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+        font-family: 'Poppins', sans-serif;
+        width: 230px;
+        z-index: 1000;
+      }
+      #dashboard h2 {
+        font-size: 15px;
+        color: #222;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      #dashboard p {
+        font-size: 13px;
+        margin: 5px 0;
+        color: #333;
+      }
+      #dashboard button {
+        margin-top: 10px;
+        width: 100%;
+        padding: 8px;
+        background: #0078d7;
+        color: white;
+        font-weight: 600;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      #dashboard button:hover {
+        background: #005fa3;
+      }
 
-  // Tombol reset view
-  document.getElementById("resetZoom").addEventListener("click", () => {
-    map.fitBounds(layer_clip_kotasamarinda_1.getBounds());
-  });
-</style>
+      /* MAP CONTROL STYLE */
+      .leaflet-control-zoom {
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .leaflet-bar a {
+        background: rgba(255,255,255,0.9);
+        color: #333;
+      }
+      .leaflet-bar a:hover {
+        background: #0078d7;
+        color: white;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="map"></div>
+
+    <!-- DASHBOARD PANEL -->
+    <div id="dashboard">
+      <h2>📊 Dashboard Informasi</h2>
+      <p><b>Total Kecamatan:</b> <span id="totalKec"></span></p>
+      <p><b>TPS Terdata:</b> <span id="tpsCount"></span></p>
+      <p><b>TPA Terdata:</b> <span id="tpaCount"></span></p>
+      <button id="resetZoom">Reset Tampilan</button>
+    </div>
+
+    <!-- SCRIPT QGIS2WEB -->
+    <script src="js/qgis2web_expressions.js"></script>
+    <script src="js/leaflet.js"></script>
+    <script src="js/L.Control.Layers.Tree.min.js"></script>
+    <script src="js/leaflet.rotatedMarker.js"></script>
+    <script src="js/leaflet.pattern.js"></script>
+    <script src="js/leaflet-hash.js"></script>
+    <script src="js/Autolinker.min.js"></script>
+    <script src="js/rbush.min.js"></script>
+    <script src="js/labelgun.min.js"></script>
+    <script src="js/labels.js"></script>
+    <script src="js/leaflet.photon.js"></script>
+    <script src="js/leaflet-measure.js"></script>
+    <script src="data/clip_kotasamarinda_1.js"></script>
+    <script src="data/JALAN_LN_50K_2.js"></script>
+    <script src="data/PEMUKIMAN_AR_50K_3.js"></script>
+    <script src="data/buffer1_4.js"></script>
+    <script src="data/buffer2_5.js"></script>
+    <script src="data/Dissolved_6.js"></script>
+    <script src="data/cliptpa_7.js"></script>
+    <script src="data/TPABUFFER_8.js"></script>
+    <script src="data/TPSBUFFER_9.js"></script>
+
+    <script>
+      var map = L.map('map', {
+        zoomControl:false,
+        maxZoom:28,
+        minZoom:1
+      }).fitBounds([[-0.5656,117.0325],[-0.4163,117.2908]]);
+
+      // === BASEMAP ===
+      var layer_OSM_0 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        opacity: 1.0,
+        minZoom: 1,
+        maxZoom: 28,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      // 🌍 Tambahan Basemap
+      var baseMaps = {
+        "OpenStreetMap": layer_OSM_0,
+        "Esri World Imagery": L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          { attribution: "Esri &mdash; Source: Esri, USGS, NOAA" }
+        ),
+        "Carto Light": L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+          { attribution: "&copy; <a href='https://carto.com/attributions'>CARTO</a>" }
+        )
+      };
+      L.control.layers(baseMaps, null, { position: "topright", collapsed: true }).addTo(map);
+
+      // === MEASURE & ZOOM CONTROL ===
+      L.control.zoom({ position: 'topleft' }).addTo(map);
+      new L.Control.Measure({
+        position: 'topleft',
+        primaryLengthUnit: 'meters',
+        secondaryLengthUnit: 'kilometers'
+      }).addTo(map);
+
+      // === LAYER DATA ===
+      var layer_clip_kotasamarinda_1 = new L.geoJson(json_clip_kotasamarinda_1).addTo(map);
+      var layer_TPABUFFER_8 = new L.geoJson(json_TPABUFFER_8).addTo(map);
+      var layer_TPSBUFFER_9 = new L.geoJson(json_TPSBUFFER_9).addTo(map);
+
+      // === DASHBOARD INTERAKTIF ===
+      document.getElementById("totalKec").innerText = layer_clip_kotasamarinda_1.getLayers().length;
+      document.getElementById("tpsCount").innerText = layer_TPSBUFFER_9.getLayers().length;
+      document.getElementById("tpaCount").innerText = layer_TPABUFFER_8.getLayers().length;
+
+      // Tombol reset view
+      document.getElementById("resetZoom").addEventListener("click", () => {
+        map.fitBounds(layer_clip_kotasamarinda_1.getBounds());
+      });
+
+      // Popup koordinat klik
+      map.on("click", function(e) {
+        L.popup()
+          .setLatLng(e.latlng)
+          .setContent("Koordinat: " + e.latlng.lat.toFixed(5) + ", " + e.latlng.lng.toFixed(5))
+          .openOn(map);
+      });
+    </script>
+  </body>
+</html>
         <script>
         var highlightLayer;
         function highlightFeature(e) {
