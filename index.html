@@ -8,9 +8,11 @@
     <!-- Leaflet & Chart.js -->
     <link rel="stylesheet" href="css/leaflet.css">
     <link rel="stylesheet" href="css/leaflet-measure.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-minimap/dist/Control.MiniMap.min.css" />
     <script src="js/leaflet.js"></script>
     <script src="js/leaflet-measure.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet-minimap/dist/Control.MiniMap.min.js"></script>
 
     <!-- Data QGIS2WEB -->
     <script src="data/clip_kotasamarinda_1.js"></script>
@@ -18,24 +20,19 @@
     <script src="data/TPABUFFER_8.js"></script>
 
     <style>
-      html, body, #map {
-        width: 100%;
-        height: 100%;
-        padding: 0;
-        margin: 0;
-      }
+      html, body, #map { width: 100%; height: 100%; margin: 0; padding: 0; }
 
       /* === DASHBOARD STYLE === */
       #dashboard {
         position: absolute;
         top: 10px;
         right: 10px;
-        background: rgba(255,255,255,0.95);
+        background: rgba(255,255,255,0.96);
         border-radius: 12px;
         padding: 15px 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.25);
         font-family: 'Poppins', sans-serif;
-        width: 300px;
+        width: 320px;
         z-index: 1000;
         max-height: 90%;
         overflow-y: auto;
@@ -44,12 +41,12 @@
       #dashboard h2 {
         font-size: 16px;
         text-align: center;
-        color: #222;
+        color: #0a3d62;
         margin-bottom: 10px;
       }
 
       #dashboard .info {
-        background: #f7f7f7;
+        background: #f1f2f6;
         border-radius: 8px;
         padding: 10px;
         margin-bottom: 10px;
@@ -59,6 +56,14 @@
       #dashboard .info p {
         margin: 5px 0;
         font-size: 13px;
+      }
+
+      #filterKecamatan {
+        width: 100%;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        margin-bottom: 10px;
       }
 
       #dashboard button {
@@ -74,23 +79,22 @@
         transition: background 0.3s;
       }
 
-      #dashboard button:hover {
-        background: #005fa3;
-      }
+      #dashboard button:hover { background: #005fa3; }
 
-      .leaflet-control-zoom {
-        border-radius: 8px;
-        overflow: hidden;
-      }
+      .leaflet-control-zoom { border-radius: 8px; overflow: hidden; }
+      .leaflet-bar a { background: rgba(255,255,255,0.9); color: #333; }
+      .leaflet-bar a:hover { background: #0078d7; color: white; }
 
-      .leaflet-bar a {
+      #legend {
+        position: absolute;
+        bottom: 15px;
+        left: 15px;
         background: rgba(255,255,255,0.9);
-        color: #333;
-      }
-
-      .leaflet-bar a:hover {
-        background: #0078d7;
-        color: white;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 13px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        line-height: 1.5;
       }
     </style>
   </head>
@@ -101,28 +105,39 @@
     <!-- === DASHBOARD PANEL === -->
     <div id="dashboard">
       <h2>📊 Dashboard SIG Samarinda</h2>
-
       <div class="info">
         <p><b>Total Kecamatan:</b> <span id="totalKec"></span></p>
         <p><b>TPS Terdata:</b> <span id="tpsCount"></span></p>
         <p><b>TPA Terdata:</b> <span id="tpaCount"></span></p>
       </div>
 
+      <select id="filterKecamatan">
+        <option value="semua">Tampilkan Semua Kecamatan</option>
+      </select>
+
       <canvas id="chartTPS" height="160"></canvas>
       <canvas id="chartTPA" height="160"></canvas>
+      <canvas id="chartPerbandingan" height="130"></canvas>
+
+      <p id="infoKecamatan" style="text-align:center;font-weight:bold;color:#444;margin:6px 0;"></p>
+      <p id="koordinat" style="font-size:12px;text-align:center;color:#666;">Lat: -, Lng: -</p>
 
       <button id="resetZoom">Reset Tampilan</button>
     </div>
 
+    <!-- === LEGEND === -->
+    <div id="legend">
+      <b>🗺️ Keterangan:</b><br>
+      <img src='https://cdn-icons-png.flaticon.com/512/535/535239.png' width='16'> TPS (Biru)<br>
+      <img src='https://cdn-icons-png.flaticon.com/512/565/565547.png' width='16'> TPA (Merah)<br>
+      <span style='display:inline-block;width:12px;height:12px;background:#b5e48c;margin-right:5px;border:1px solid #333;'></span> Wilayah Kecamatan
+    </div>
+
     <script>
       // === INISIALISASI PETA ===
-      var map = L.map('map', {
-        zoomControl: false,
-        maxZoom: 18,
-        minZoom: 1
-      }).fitBounds([[-0.5656,117.0325],[-0.4163,117.2908]]);
+      var map = L.map('map', { zoomControl: false, maxZoom: 18, minZoom: 1 })
+        .fitBounds([[-0.5656,117.0325],[-0.4163,117.2908]]);
 
-      // === BASEMAP ===
       var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
@@ -140,27 +155,26 @@
       L.control.layers({ 'OpenStreetMap': osm, 'Esri World Imagery': esri, 'Carto Light': carto }).addTo(map);
       L.control.zoom({ position: 'topleft' }).addTo(map);
       new L.Control.Measure({ position: 'topleft' }).addTo(map);
+      L.control.scale({ position: 'bottomleft', metric: true }).addTo(map);
+
+      // MiniMap
+      var miniMap = new L.Control.MiniMap(osm, { toggleDisplay: true, minimized: false }).addTo(map);
 
       // === LAYER KECAMATAN ===
       var layer_clip_kotasamarinda_1 = L.geoJson(json_clip_kotasamarinda_1, {
-        style: {
-          color: '#333',
-          weight: 1,
-          fillColor: '#b5e48c',
-          fillOpacity: 0.4
-        }
+        style: { color: '#333', weight: 1, fillColor: '#b5e48c', fillOpacity: 0.4 }
       }).addTo(map);
 
-      // === WARNA & IKON UNTUK TPA DAN TPS ===
+      // === IKON UNTUK TPA & TPS ===
       var tpaIcon = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/565/565547.png', // warna merah
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/565/565547.png',
         iconSize: [28, 28],
         iconAnchor: [14, 28],
         popupAnchor: [0, -25]
       });
 
       var tpsIcon = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/535/535239.png', // warna biru
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/535/535239.png',
         iconSize: [26, 26],
         iconAnchor: [13, 26],
         popupAnchor: [0, -20]
@@ -168,18 +182,14 @@
 
       // === LAYER TPS ===
       var layer_TPSBUFFER_9 = L.geoJson(json_TPSBUFFER_9, {
-        pointToLayer: function (feature, latlng) {
-          return L.marker(latlng, { icon: tpsIcon })
-            .bindPopup("<b>TPS:</b> " + (feature.properties.name || 'Tidak diketahui') + "<br><b>Kecamatan:</b> " + (feature.properties.kecamatan || '-'));
-        }
+        pointToLayer: (f, latlng) => L.marker(latlng, { icon: tpsIcon })
+          .bindPopup("<b>TPS:</b> " + (f.properties.name || '-') + "<br><b>Kecamatan:</b> " + (f.properties.kecamatan || '-'))
       }).addTo(map);
 
       // === LAYER TPA ===
       var layer_TPABUFFER_8 = L.geoJson(json_TPABUFFER_8, {
-        pointToLayer: function (feature, latlng) {
-          return L.marker(latlng, { icon: tpaIcon })
-            .bindPopup("<b>TPA:</b> " + (feature.properties.name || 'Tidak diketahui') + "<br><b>Kecamatan:</b> " + (feature.properties.kecamatan || '-'));
-        }
+        pointToLayer: (f, latlng) => L.marker(latlng, { icon: tpaIcon })
+          .bindPopup("<b>TPA:</b> " + (f.properties.name || '-') + "<br><b>Kecamatan:</b> " + (f.properties.kecamatan || '-'))
       }).addTo(map);
 
       // === DASHBOARD DATA ===
@@ -187,9 +197,7 @@
       document.getElementById("tpsCount").innerText = layer_TPSBUFFER_9.getLayers().length;
       document.getElementById("tpaCount").innerText = layer_TPABUFFER_8.getLayers().length;
 
-      document.getElementById("resetZoom").addEventListener("click", () => {
-        map.fitBounds(layer_clip_kotasamarinda_1.getBounds());
-      });
+      document.getElementById("resetZoom").addEventListener("click", () => map.fitBounds(layer_clip_kotasamarinda_1.getBounds()));
 
       // === HITUNG DATA PER KECAMATAN ===
       function countPerKecamatan(layer) {
@@ -200,62 +208,76 @@
         });
         return counts;
       }
-
       let tpsPerKec = countPerKecamatan(layer_TPSBUFFER_9);
       let tpaPerKec = countPerKecamatan(layer_TPABUFFER_8);
 
-      // === GRAFIK TPS ===
+      // Isi dropdown
+      Object.keys(tpsPerKec).forEach(kec => {
+        let opt = document.createElement("option");
+        opt.value = kec; opt.textContent = kec;
+        document.getElementById("filterKecamatan").appendChild(opt);
+      });
+
+      // === FILTER KECAMATAN ===
+      document.getElementById("filterKecamatan").addEventListener("change", function(){
+        let val = this.value;
+        if(val === "semua"){
+          map.fitBounds(layer_clip_kotasamarinda_1.getBounds());
+          layer_TPSBUFFER_9.eachLayer(l => l.addTo(map));
+          layer_TPABUFFER_8.eachLayer(l => l.addTo(map));
+        } else {
+          let bounds = [];
+          layer_TPSBUFFER_9.eachLayer(l => {
+            if(l.feature.properties.kecamatan === val) { l.addTo(map); bounds.push(l.getLatLng()); }
+            else map.removeLayer(l);
+          });
+          layer_TPABUFFER_8.eachLayer(l => {
+            if(l.feature.properties.kecamatan === val) { l.addTo(map); bounds.push(l.getLatLng()); }
+            else map.removeLayer(l);
+          });
+          if(bounds.length>0) map.fitBounds(L.latLngBounds(bounds));
+        }
+      });
+
+      // === HOVER KECAMATAN ===
+      function highlightFeature(e){
+        var layer=e.target;
+        layer.setStyle({ weight:2, color:'#000', fillColor:'#f4a261', fillOpacity:0.6 });
+        document.getElementById("infoKecamatan").innerText="Kecamatan: "+(layer.feature.properties.NAMOBJ||"Tidak diketahui");
+      }
+      function resetHighlight(e){
+        layer_clip_kotasamarinda_1.resetStyle(e.target);
+        document.getElementById("infoKecamatan").innerText="";
+      }
+      layer_clip_kotasamarinda_1.eachLayer(l=>l.on({mouseover:highlightFeature,mouseout:resetHighlight}));
+
+      // === GRAFIK ===
       const ctx1 = document.getElementById('chartTPS').getContext('2d');
-      new Chart(ctx1, {
-        type: 'bar',
-        data: {
-          labels: Object.keys(tpsPerKec),
-          datasets: [{
-            label: 'Jumlah TPS',
-            data: Object.values(tpsPerKec),
-            backgroundColor: '#0078d7aa',
-            borderColor: '#0078d7',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { color: '#333', font: { size: 10 } } },
-            y: { beginAtZero: true, ticks: { stepSize: 1 } }
-          }
-        }
-      });
+      new Chart(ctx1, { type:'bar', data:{ labels:Object.keys(tpsPerKec),
+        datasets:[{ label:'TPS', data:Object.values(tpsPerKec),
+          backgroundColor:'#0078d7aa', borderColor:'#0078d7', borderWidth:1 }]},
+        options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}});
 
-      // === GRAFIK TPA ===
       const ctx2 = document.getElementById('chartTPA').getContext('2d');
-      new Chart(ctx2, {
-        type: 'bar',
-        data: {
-          labels: Object.keys(tpaPerKec),
-          datasets: [{
-            label: 'Jumlah TPA',
-            data: Object.values(tpaPerKec),
-            backgroundColor: '#e04f28aa',
-            borderColor: '#e04f28',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { ticks: { color: '#333', font: { size: 10 } } },
-            y: { beginAtZero: true, ticks: { stepSize: 1 } }
-          }
-        }
+      new Chart(ctx2, { type:'bar', data:{ labels:Object.keys(tpaPerKec),
+        datasets:[{ label:'TPA', data:Object.values(tpaPerKec),
+          backgroundColor:'#e04f28aa', borderColor:'#e04f28', borderWidth:1 }]},
+        options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}});
+
+      const ctx3=document.getElementById('chartPerbandingan').getContext('2d');
+      new Chart(ctx3,{type:'doughnut',data:{labels:['TPS','TPA'],
+        datasets:[{data:[Object.values(tpsPerKec).reduce((a,b)=>a+b,0),
+                         Object.values(tpaPerKec).reduce((a,b)=>a+b,0)],
+          backgroundColor:['#0078d7','#e04f28']}]},
+        options:{plugins:{legend:{position:'bottom'}}}});
+
+      // === TAMPILKAN KOORDINAT ===
+      map.on('mousemove',e=>{
+        document.getElementById('koordinat').innerText="Lat: "+e.latlng.lat.toFixed(4)+", Lng: "+e.latlng.lng.toFixed(4);
       });
 
-      // Klik peta → tampilkan koordinat
-      map.on("click", function(e) {
-        L.popup()
-          .setLatLng(e.latlng)
+      map.on("click", e => {
+        L.popup().setLatLng(e.latlng)
           .setContent("Koordinat: " + e.latlng.lat.toFixed(5) + ", " + e.latlng.lng.toFixed(5))
           .openOn(map);
       });
