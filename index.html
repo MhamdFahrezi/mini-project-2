@@ -46,6 +46,53 @@
         <script src="data/cliptpa_7.js"></script>
         <script src="data/TPABUFFER_8.js"></script>
         <script src="data/TPSBUFFER_9.js"></script>
+
+		<!-- Dashboard Panel -->
+<div id="dashboard">
+  <h2>📊 Dashboard Informasi</h2>
+  <p><b>Total Kecamatan:</b> <span id="totalKec"></span></p>
+  <p><b>TPS Terdata:</b> <span id="tpsCount"></span></p>
+  <p><b>TPA Terdata:</b> <span id="tpaCount"></span></p>
+  <button id="resetZoom">Reset Tampilan</button>
+</div>
+
+<style>
+  #dashboard {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 12px;
+    padding: 15px 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    font-family: 'Poppins', sans-serif;
+    width: 220px;
+    z-index: 1000;
+  }
+  #dashboard h2 {
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 10px;
+  }
+  #dashboard p {
+    font-size: 13px;
+    margin: 5px 0;
+  }
+  #dashboard button {
+    margin-top: 10px;
+    width: 100%;
+    padding: 6px;
+    background: #0078d7;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #dashboard button:hover {
+    background: #005fa3;
+  }
+</style>
+
         <script>
         var highlightLayer;
         function highlightFeature(e) {
