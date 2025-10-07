@@ -2,17 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="stylesheet" href="css/leaflet.css">
-    <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
-    <link rel="stylesheet" href="css/qgis2web.css">
-    <link rel="stylesheet" href="css/fontawesome-all.min.css">
-    <link rel="stylesheet" href="css/leaflet.photon.css">
-    <link rel="stylesheet" href="css/leaflet-measure.css">
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
     <title>Peta SIG - Kota Samarinda</title>
+
+    <!-- Leaflet & Chart.js -->
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/leaflet-measure.css">
+    <script src="js/leaflet.js"></script>
+    <script src="js/leaflet-measure.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Data QGIS2WEB -->
+    <script src="data/clip_kotasamarinda_1.js"></script>
+    <script src="data/TPSBUFFER_9.js"></script>
+    <script src="data/TPABUFFER_8.js"></script>
 
     <style>
       html, body, #map {
@@ -22,30 +25,42 @@
         margin: 0;
       }
 
-      /* DASHBOARD STYLE */
+      /* === DASHBOARD STYLE === */
       #dashboard {
         position: absolute;
         top: 10px;
         right: 10px;
-        background: rgba(255,255,255,0.92);
+        background: rgba(255,255,255,0.95);
         border-radius: 12px;
         padding: 15px 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.25);
         font-family: 'Poppins', sans-serif;
-        width: 230px;
+        width: 300px;
         z-index: 1000;
+        max-height: 90%;
+        overflow-y: auto;
       }
+
       #dashboard h2 {
-        font-size: 15px;
+        font-size: 16px;
+        text-align: center;
         color: #222;
+        margin-bottom: 10px;
+      }
+
+      #dashboard .info {
+        background: #f7f7f7;
+        border-radius: 8px;
+        padding: 10px;
         margin-bottom: 10px;
         text-align: center;
       }
-      #dashboard p {
-        font-size: 13px;
+
+      #dashboard .info p {
         margin: 5px 0;
-        color: #333;
+        font-size: 13px;
       }
+
       #dashboard button {
         margin-top: 10px;
         width: 100%;
@@ -58,19 +73,21 @@
         cursor: pointer;
         transition: background 0.3s;
       }
+
       #dashboard button:hover {
         background: #005fa3;
       }
 
-      /* MAP CONTROL STYLE */
       .leaflet-control-zoom {
         border-radius: 8px;
         overflow: hidden;
       }
+
       .leaflet-bar a {
         background: rgba(255,255,255,0.9);
         color: #333;
       }
+
       .leaflet-bar a:hover {
         background: #0078d7;
         color: white;
@@ -81,91 +98,161 @@
   <body>
     <div id="map"></div>
 
-    <!-- DASHBOARD PANEL -->
+    <!-- === DASHBOARD PANEL === -->
     <div id="dashboard">
-      <h2>📊 Dashboard Informasi</h2>
-      <p><b>Total Kecamatan:</b> <span id="totalKec"></span></p>
-      <p><b>TPS Terdata:</b> <span id="tpsCount"></span></p>
-      <p><b>TPA Terdata:</b> <span id="tpaCount"></span></p>
+      <h2>📊 Dashboard SIG Samarinda</h2>
+
+      <div class="info">
+        <p><b>Total Kecamatan:</b> <span id="totalKec"></span></p>
+        <p><b>TPS Terdata:</b> <span id="tpsCount"></span></p>
+        <p><b>TPA Terdata:</b> <span id="tpaCount"></span></p>
+      </div>
+
+      <canvas id="chartTPS" height="160"></canvas>
+      <canvas id="chartTPA" height="160"></canvas>
+
       <button id="resetZoom">Reset Tampilan</button>
     </div>
 
-    <!-- SCRIPT QGIS2WEB -->
-    <script src="js/qgis2web_expressions.js"></script>
-    <script src="js/leaflet.js"></script>
-    <script src="js/L.Control.Layers.Tree.min.js"></script>
-    <script src="js/leaflet.rotatedMarker.js"></script>
-    <script src="js/leaflet.pattern.js"></script>
-    <script src="js/leaflet-hash.js"></script>
-    <script src="js/Autolinker.min.js"></script>
-    <script src="js/rbush.min.js"></script>
-    <script src="js/labelgun.min.js"></script>
-    <script src="js/labels.js"></script>
-    <script src="js/leaflet.photon.js"></script>
-    <script src="js/leaflet-measure.js"></script>
-    <script src="data/clip_kotasamarinda_1.js"></script>
-    <script src="data/JALAN_LN_50K_2.js"></script>
-    <script src="data/PEMUKIMAN_AR_50K_3.js"></script>
-    <script src="data/buffer1_4.js"></script>
-    <script src="data/buffer2_5.js"></script>
-    <script src="data/Dissolved_6.js"></script>
-    <script src="data/cliptpa_7.js"></script>
-    <script src="data/TPABUFFER_8.js"></script>
-    <script src="data/TPSBUFFER_9.js"></script>
-
     <script>
+      // === INISIALISASI PETA ===
       var map = L.map('map', {
-        zoomControl:false,
-        maxZoom:28,
-        minZoom:1
+        zoomControl: false,
+        maxZoom: 18,
+        minZoom: 1
       }).fitBounds([[-0.5656,117.0325],[-0.4163,117.2908]]);
 
       // === BASEMAP ===
-      var layer_OSM_0 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        opacity: 1.0,
-        minZoom: 1,
-        maxZoom: 28,
-        attribution: '&copy; OpenStreetMap'
+      var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
-      // 🌍 Tambahan Basemap
-      var baseMaps = {
-        "OpenStreetMap": layer_OSM_0,
-        "Esri World Imagery": L.tileLayer(
-          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-          { attribution: "Esri &mdash; Source: Esri, USGS, NOAA" }
-        ),
-        "Carto Light": L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-          { attribution: "&copy; <a href='https://carto.com/attributions'>CARTO</a>" }
-        )
-      };
-      L.control.layers(baseMaps, null, { position: "topright", collapsed: true }).addTo(map);
+      var esri = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: 'Esri &mdash; Source: Esri, USGS, NOAA' }
+      );
 
-      // === MEASURE & ZOOM CONTROL ===
+      var carto = L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        { attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>' }
+      );
+
+      L.control.layers({ 'OpenStreetMap': osm, 'Esri World Imagery': esri, 'Carto Light': carto }).addTo(map);
       L.control.zoom({ position: 'topleft' }).addTo(map);
-      new L.Control.Measure({
-        position: 'topleft',
-        primaryLengthUnit: 'meters',
-        secondaryLengthUnit: 'kilometers'
+      new L.Control.Measure({ position: 'topleft' }).addTo(map);
+
+      // === LAYER KECAMATAN ===
+      var layer_clip_kotasamarinda_1 = L.geoJson(json_clip_kotasamarinda_1, {
+        style: {
+          color: '#333',
+          weight: 1,
+          fillColor: '#b5e48c',
+          fillOpacity: 0.4
+        }
       }).addTo(map);
 
-      // === LAYER DATA ===
-      var layer_clip_kotasamarinda_1 = new L.geoJson(json_clip_kotasamarinda_1).addTo(map);
-      var layer_TPABUFFER_8 = new L.geoJson(json_TPABUFFER_8).addTo(map);
-      var layer_TPSBUFFER_9 = new L.geoJson(json_TPSBUFFER_9).addTo(map);
+      // === WARNA & IKON UNTUK TPA DAN TPS ===
+      var tpaIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/565/565547.png', // warna merah
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -25]
+      });
 
-      // === DASHBOARD INTERAKTIF ===
+      var tpsIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/535/535239.png', // warna biru
+        iconSize: [26, 26],
+        iconAnchor: [13, 26],
+        popupAnchor: [0, -20]
+      });
+
+      // === LAYER TPS ===
+      var layer_TPSBUFFER_9 = L.geoJson(json_TPSBUFFER_9, {
+        pointToLayer: function (feature, latlng) {
+          return L.marker(latlng, { icon: tpsIcon })
+            .bindPopup("<b>TPS:</b> " + (feature.properties.name || 'Tidak diketahui') + "<br><b>Kecamatan:</b> " + (feature.properties.kecamatan || '-'));
+        }
+      }).addTo(map);
+
+      // === LAYER TPA ===
+      var layer_TPABUFFER_8 = L.geoJson(json_TPABUFFER_8, {
+        pointToLayer: function (feature, latlng) {
+          return L.marker(latlng, { icon: tpaIcon })
+            .bindPopup("<b>TPA:</b> " + (feature.properties.name || 'Tidak diketahui') + "<br><b>Kecamatan:</b> " + (feature.properties.kecamatan || '-'));
+        }
+      }).addTo(map);
+
+      // === DASHBOARD DATA ===
       document.getElementById("totalKec").innerText = layer_clip_kotasamarinda_1.getLayers().length;
       document.getElementById("tpsCount").innerText = layer_TPSBUFFER_9.getLayers().length;
       document.getElementById("tpaCount").innerText = layer_TPABUFFER_8.getLayers().length;
 
-      // Tombol reset view
       document.getElementById("resetZoom").addEventListener("click", () => {
         map.fitBounds(layer_clip_kotasamarinda_1.getBounds());
       });
 
-      // Popup koordinat klik
+      // === HITUNG DATA PER KECAMATAN ===
+      function countPerKecamatan(layer) {
+        let counts = {};
+        layer.eachLayer(l => {
+          let kec = l.feature.properties.kecamatan || "Tidak diketahui";
+          counts[kec] = (counts[kec] || 0) + 1;
+        });
+        return counts;
+      }
+
+      let tpsPerKec = countPerKecamatan(layer_TPSBUFFER_9);
+      let tpaPerKec = countPerKecamatan(layer_TPABUFFER_8);
+
+      // === GRAFIK TPS ===
+      const ctx1 = document.getElementById('chartTPS').getContext('2d');
+      new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(tpsPerKec),
+          datasets: [{
+            label: 'Jumlah TPS',
+            data: Object.values(tpsPerKec),
+            backgroundColor: '#0078d7aa',
+            borderColor: '#0078d7',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#333', font: { size: 10 } } },
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+          }
+        }
+      });
+
+      // === GRAFIK TPA ===
+      const ctx2 = document.getElementById('chartTPA').getContext('2d');
+      new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(tpaPerKec),
+          datasets: [{
+            label: 'Jumlah TPA',
+            data: Object.values(tpaPerKec),
+            backgroundColor: '#e04f28aa',
+            borderColor: '#e04f28',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#333', font: { size: 10 } } },
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+          }
+        }
+      });
+
+      // Klik peta → tampilkan koordinat
       map.on("click", function(e) {
         L.popup()
           .setLatLng(e.latlng)
@@ -174,7 +261,6 @@
       });
     </script>
   </body>
-</html>
         <script>
         var highlightLayer;
         function highlightFeature(e) {
