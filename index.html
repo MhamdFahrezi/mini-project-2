@@ -92,6 +92,17 @@
     background: #005fa3;
   }
 </style>
+<script>
+  // Dashboard interaktif
+  document.getElementById("totalKec").innerText = layer_clip_kotasamarinda_1.getLayers().length;
+  document.getElementById("tpsCount").innerText = layer_TPSBUFFER_9.getLayers().length;
+  document.getElementById("tpaCount").innerText = layer_TPABUFFER_8.getLayers().length;
+
+  // Tombol reset view
+  document.getElementById("resetZoom").addEventListener("click", () => {
+    map.fitBounds(layer_clip_kotasamarinda_1.getBounds());
+  });
+</script>
 
         <script>
         var highlightLayer;
